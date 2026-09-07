@@ -69,6 +69,10 @@ export function useConverso() {
   const speakStartedAtRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const levelRef = useRef(0);
+  const spokenWordsRef = useRef<Set<string>>(new Set());
+  const speakEndedAtRef = useRef(0);
+
 
   const setStatusSafe = useCallback((s: Status) => {
     statusRef.current = s;
