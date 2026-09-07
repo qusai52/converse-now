@@ -1,132 +1,187 @@
-# Converse Now
+Converso AI
+Talk naturally. Interrupt anytime.
 
-Build a polished web app called **Converso AI** with the tagline **"Talk naturally. Interrupt anytime."**
+Converso AI is a browser-based real-time voice assistant designed for natural, conversational interaction.
 
-It is a generic browser-based AI voice assistant. The main goal is to make real-time voice interruption (barge-in) work reliably.
+The key feature is real-time interruption (barge-in) — users can interrupt the AI while it is speaking, causing the current response to stop so the assistant can immediately process the new request.
 
-### Core flow
+🚀 Features
+🎤 Browser-based microphone input
+📝 Speech-to-text transcription
+🧠 LLM-powered responses
+🔊 Text-to-speech responses
+⚡ Real-time voice interruption (barge-in)
+🛑 Immediate audio stopping when interrupted
+🔄 Cancellation/invalidation of previous requests
+🛡️ Protection against stale responses after interruption
+🟢 Live conversation status
+🧠 Conversation memory for follow-up questions
+⏳ Short-pause/trailing-off handling
+💬 Conversation transcript
+⌨️ Text input fallback
+Live Status States
 
-Microphone → Speech-to-Text → LLM → Text-to-Speech → Audio
+The interface provides real-time feedback using these states:
 
-The user speaks through the browser, the speech is transcribed, sent to an LLM, and the response is spoken back.
+IDLE
+LISTENING
+TRANSCRIBING
+THINKING
+SPEAKING
+INTERRUPTED
+ERROR
+💡 What Makes Converso AI Different?
 
-### Features
+Traditional voice assistants often require users to wait until the assistant finishes speaking.
 
-1. 🎤 Browser microphone with permission/error handling.
+Converso AI treats interruption as a core part of the conversation.
 
-2. 📝 Speech-to-text with live/final transcript.
+AI SPEAKING
+↓
+USER INTERRUPTS
+↓
+AUDIO STOPS
+↓
+OLD RESPONSE IS CANCELLED / INVALIDATED
+↓
+NEW INPUT IS PROCESSED
+↓
+AI RESPONDS TO THE NEW QUESTION
 
-3. 🧠 LLM with streaming responses when supported.
+The system does not simply change the interface when an interruption occurs. It stops the current audio playback and prevents responses from an older request from interfering with the new conversation.
 
-4. 🔊 Text-to-speech with controllable audio playback.
+🏗️ How It Works
 
-5. ⚡ **Real-time interruption:** while the AI is speaking, if the user starts talking:
+The main voice pipeline is:
 
-   - Stop audio immediately.
+Microphone
+↓
+Speech-to-Text
+↓
+Conversation Context
+↓
+LLM
+↓
+Text-to-Speech
+↓
+Audio Playback
 
-   - Clear queued audio.
+When an interruption occurs:
 
-   - Stop/cancel TTS.
+SPEAKING
+↓
+Interruption Detected
+↓
+Stop Audio + Clear Queued Audio
+↓
+Cancel / Invalidate Previous Request
+↓
+Process New Speech
+↓
+Generate New Response
+↓
+SPEAKING
 
-   - Abort/cancel the active LLM request when possible.
+Request cancellation and request identification are used to prevent stale responses from a previous conversation turn from playing after a newer request has started.
 
-   - Mark the response as interrupted.
+🛠️ Tech Stack
+React
+TypeScript
+Vite
+Browser Web APIs
+Speech-to-Text
+Text-to-Speech
+LLM API
+📦 Running Locally
 
-   - Process the new speech and generate a new response.
+Clone the repository:
 
-6. 🛡️ Prevent old/cancelled responses from affecting the new response. Use request IDs, AbortController, or equivalent cancellation logic.
+git clone https://github.com/qusai52/converse-now.git
+cd converse-now
 
-7. 🟢 **Live status indicator:** IDLE, LISTENING, TRANSCRIBING, THINKING, SPEAKING, INTERRUPTED, ERROR. Status must reflect the actual system state.
+Install dependencies:
 
-8. 🧠 Conversation memory so follow-up questions understand previous context.
+npm install
 
-9. ⏳ Handle short pauses/trailing-off. For example, if the user says "Can you explain how I can..." and pauses, wait briefly for continuation instead of immediately submitting an incomplete request.
+Create the required environment configuration:
 
-10. 💬 Clean conversation transcript. Clearly mark interrupted responses.
+.env
 
-### UI
+Add the API configuration required by the application.
 
-Create a modern, minimal, premium-looking interface. The main screen should contain:
+Then start the development server:
 
-- Converso AI name/tagline
+npm run dev
 
-- Large current-status indicator
+Open the local URL provided by the development server in your browser.
 
-- Microphone/voice control
+🔐 Environment Variables
 
-- Conversation transcript
+API keys and other secrets should be stored in environment variables and should never be committed to the repository.
 
-- Subtle voice/waveform animation
+The required environment variables depend on the external services configured for the current application.
 
-Example statuses:
-
-🟢 LISTENING
-
-🔵 THINKING
-
-🟣 SPEAKING
-
-🟠 INTERRUPTED
-
-⚪ IDLE
-
-The status should visibly transition during conversation:
-
-LISTENING → TRANSCRIBING → THINKING → SPEAKING
-
-During interruption:
-
-SPEAKING → INTERRUPTED → LISTENING → TRANSCRIBING → THINKING → SPEAKING
-
-### Important
-
-Do NOT fake interruption by only changing the UI. The actual audio must stop and the active request must be cancelled/aborted where supported. Late responses from cancelled requests must never play or overwrite the new response.
-
-Use React + TypeScript and a clean modular architecture. Keep API keys in environment variables and never expose secrets in frontend code.
-
-Do not add unnecessary features such as authentication, payments, dashboards, RAG, vector databases, tool calling, analytics, or complex settings.
-
-### Test
-
-After building, test this exact scenario:
+🧪 Demo Test
+Test 1 — Real-Time Interruption
 
 Ask:
 
 "Give me a detailed explanation of quantum computing."
 
-While it is speaking, interrupt:
+While the assistant is speaking, interrupt it with:
 
 "Stop. What is 25 times 37?"
 
-The quantum-computing response must stop immediately, the old request must be cancelled/invalidated, and the assistant must answer the new question.
+Expected behavior:
 
-Also test conversation memory:
+The current audio stops immediately.
+The previous response is marked as interrupted.
+The previous request is cancelled or invalidated.
+The new speech is processed.
+The assistant answers the new question.
 
-"What is Python?" → "Who created it?"
+Expected answer:
 
-And trailing-off:
+"925."
 
-"Can you explain how I can..." → pause → "...learn machine learning?"
+Test 2 — Conversation Memory
 
-Build the actual working application, not a static mockup.
+Ask:
 
-This project was built with [Lovable](https://lovable.dev).
+"What is Python?"
 
-## Build with Lovable
+Then ask:
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/5a56b616-96a9-4cf6-85e1-568236384814).
+"Who created it?"
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+The second question should use the context from the previous conversation.
 
-## Development
+Test 3 — Trailing-Off
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Say:
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+"Can you explain how I can..."
+
+Pause briefly, then continue:
+
+"...learn machine learning?"
+
+The assistant should wait briefly for the continuation instead of immediately submitting an incomplete request.
+
+🎯 Project Goal
+
+The goal of Converso AI is to make voice-based AI interaction feel more natural by allowing users to speak, pause, ask follow-up questions, and interrupt the assistant without having to wait for it to finish.
+
+The project focuses particularly on real-time interruption handling, request cancellation, audio control, and conversational context.
+
+📄 Project Status
+
+Converso AI was developed as a competition project demonstrating a real-time, interruptible browser-based AI voice assistant.
+
+The application is designed to be tested directly through the deployed web application and can also be run locally from the source repository.
+
+👤 Project
+
+Converso AI
+
+Tagline: Talk naturally. Interrupt anytime.
