@@ -27,6 +27,27 @@ export type Turn = {
 
 const PAUSE_MS = 1100;
 const TRAILING_OFF_MS = 2400;
+/** Mic loudness required to count as real user speech while the AI is talking. */
+const BARGE_IN_LEVEL = 0.14;
+/** Echo can still reach the recogniser shortly after playback ends. */
+const ECHO_TAIL_MS = 700;
+
+const normalize = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/** True when the transcript mostly repeats what the assistant just said aloud. */
+function looksLikeEcho(text: string, spoken: Set<string>): boolean {
+  const words = normalize(text);
+  if (!words.length || spoken.size === 0) return false;
+  let hits = 0;
+  for (const w of words) if (spoken.has(w)) hits++;
+  return hits / words.length >= 0.6;
+}
+
 
 export function useConverso() {
   const [status, setStatus] = useState<Status>("IDLE");
@@ -48,6 +69,10 @@ export function useConverso() {
   const speakStartedAtRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const levelRef = useRef(0);
+  const spokenWordsRef = useRef<Set<string>>(new Set());
+  const speakEndedAtRef = useRef(0);
+
 
   const setStatusSafe = useCallback((s: Status) => {
     statusRef.current = s;
@@ -110,9 +135,11 @@ export function useConverso() {
       setStatusSafe("THINKING");
 
       const player = getPlayer();
+      spokenWordsRef.current = new Set();
       let spoken = "";
       let buffer = "";
       let full = "";
+
 
       const flush = (force = false) => {
         if (runId !== runIdRef.current) return;
@@ -133,7 +160,9 @@ export function useConverso() {
         }
         if (chunk.trim()) {
           spoken += chunk;
+          for (const w of normalize(chunk)) spokenWordsRef.current.add(w);
           player.enqueue(chunk);
+
           if (statusRef.current === "THINKING") {
             speakStartedAtRef.current = Date.now();
             setStatusSafe("SPEAKING");
@@ -232,15 +261,29 @@ export function useConverso() {
       const s = statusRef.current;
       const meaningful = text.trim().length >= 2;
       const speakingLongEnough = Date.now() - speakStartedAtRef.current > 500;
+      const inEchoWindow =
+        s === "SPEAKING" ||
+        s === "THINKING" ||
+        Date.now() - speakEndedAtRef.current < ECHO_TAIL_MS;
+
+      // Reject the assistant's own voice leaking back through the microphone:
+      // either it repeats what was just spoken, or the mic is too quiet to be
+      // a real person talking over the speakers.
+      if (inEchoWindow) {
+        if (looksLikeEcho(text, spokenWordsRef.current)) return;
+        if (s === "SPEAKING" && levelRef.current < BARGE_IN_LEVEL) return;
+      }
 
       if (meaningful && (s === "SPEAKING" || s === "THINKING")) {
         if (s === "SPEAKING" && !speakingLongEnough) return;
         cancelCurrentTurn(true);
+        spokenWordsRef.current = new Set();
         setStatusSafe("INTERRUPTED");
         setTimeout(() => {
           if (activeRef.current && statusRef.current === "INTERRUPTED") setStatusSafe("LISTENING");
         }, 550);
       }
+
 
       if (isFinal) {
         pendingRef.current = `${pendingRef.current} ${text}`.trim();
@@ -262,12 +305,14 @@ export function useConverso() {
   useEffect(() => {
     const id = setInterval(() => {
       if (statusRef.current === "SPEAKING" && !playerRef.current?.busy) {
+        speakEndedAtRef.current = Date.now();
         if (activeRef.current) setStatusSafe("LISTENING");
         else setStatusSafe("IDLE");
       }
     }, 200);
     return () => clearInterval(id);
   }, [setStatusSafe]);
+
 
   const stopSession = useCallback(() => {
     activeRef.current = false;
@@ -321,7 +366,10 @@ export function useConverso() {
           const v = ((data[i] ?? 128) - 128) / 128;
           sum += v * v;
         }
-        setLevel(Math.min(1, Math.sqrt(sum / data.length) * 4));
+        const lvl = Math.min(1, Math.sqrt(sum / data.length) * 4);
+        levelRef.current = lvl;
+        setLevel(lvl);
+
         rafRef.current = requestAnimationFrame(tick);
       };
       tick();
