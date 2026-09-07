@@ -211,7 +211,7 @@ export function useConverso() {
         }, 2500);
       }
     },
-    [getPlayer, setStatusSafe],
+    [cancelCurrentTurn, getPlayer, setStatusSafe],
   );
 
   const scheduleSubmit = useCallback(() => {
