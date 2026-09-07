@@ -261,15 +261,29 @@ export function useConverso() {
       const s = statusRef.current;
       const meaningful = text.trim().length >= 2;
       const speakingLongEnough = Date.now() - speakStartedAtRef.current > 500;
+      const inEchoWindow =
+        s === "SPEAKING" ||
+        s === "THINKING" ||
+        Date.now() - speakEndedAtRef.current < ECHO_TAIL_MS;
+
+      // Reject the assistant's own voice leaking back through the microphone:
+      // either it repeats what was just spoken, or the mic is too quiet to be
+      // a real person talking over the speakers.
+      if (inEchoWindow) {
+        if (looksLikeEcho(text, spokenWordsRef.current)) return;
+        if (s === "SPEAKING" && levelRef.current < BARGE_IN_LEVEL) return;
+      }
 
       if (meaningful && (s === "SPEAKING" || s === "THINKING")) {
         if (s === "SPEAKING" && !speakingLongEnough) return;
         cancelCurrentTurn(true);
+        spokenWordsRef.current = new Set();
         setStatusSafe("INTERRUPTED");
         setTimeout(() => {
           if (activeRef.current && statusRef.current === "INTERRUPTED") setStatusSafe("LISTENING");
         }, 550);
       }
+
 
       if (isFinal) {
         pendingRef.current = `${pendingRef.current} ${text}`.trim();
