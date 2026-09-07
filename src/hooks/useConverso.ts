@@ -366,7 +366,10 @@ export function useConverso() {
           const v = ((data[i] ?? 128) - 128) / 128;
           sum += v * v;
         }
-        setLevel(Math.min(1, Math.sqrt(sum / data.length) * 4));
+        const lvl = Math.min(1, Math.sqrt(sum / data.length) * 4);
+        levelRef.current = lvl;
+        setLevel(lvl);
+
         rafRef.current = requestAnimationFrame(tick);
       };
       tick();
