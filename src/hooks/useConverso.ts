@@ -88,8 +88,13 @@ export function useConverso() {
     async (text: string) => {
       const clean = text.trim();
       if (!clean) return;
+      // A new turn always cancels whatever is still speaking/streaming.
+      if (statusRef.current === "SPEAKING" || statusRef.current === "THINKING") {
+        cancelCurrentTurn(true);
+      }
 
       runIdRef.current += 1;
+
       const runId = runIdRef.current;
       const controller = new AbortController();
       abortRef.current = controller;
