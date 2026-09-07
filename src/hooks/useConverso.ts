@@ -158,7 +158,9 @@ export function useConverso() {
         }
         if (chunk.trim()) {
           spoken += chunk;
+          for (const w of normalize(chunk)) spokenWordsRef.current.add(w);
           player.enqueue(chunk);
+
           if (statusRef.current === "THINKING") {
             speakStartedAtRef.current = Date.now();
             setStatusSafe("SPEAKING");
