@@ -305,12 +305,14 @@ export function useConverso() {
   useEffect(() => {
     const id = setInterval(() => {
       if (statusRef.current === "SPEAKING" && !playerRef.current?.busy) {
+        speakEndedAtRef.current = Date.now();
         if (activeRef.current) setStatusSafe("LISTENING");
         else setStatusSafe("IDLE");
       }
     }, 200);
     return () => clearInterval(id);
   }, [setStatusSafe]);
+
 
   const stopSession = useCallback(() => {
     activeRef.current = false;
