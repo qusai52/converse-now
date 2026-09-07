@@ -135,9 +135,11 @@ export function useConverso() {
       setStatusSafe("THINKING");
 
       const player = getPlayer();
+      spokenWordsRef.current = new Set();
       let spoken = "";
       let buffer = "";
       let full = "";
+
 
       const flush = (force = false) => {
         if (runId !== runIdRef.current) return;
